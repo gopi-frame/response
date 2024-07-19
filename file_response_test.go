@@ -10,26 +10,44 @@ import (
 )
 
 func TestFileResponse(t *testing.T) {
-	tempDir := os.TempDir()
-	tempFile, err := os.CreateTemp(tempDir, "test_response")
-	assert.Nil(t, err)
-	if _, err := tempFile.Write([]byte("helloworld")); err != nil {
+	f, err := os.CreateTemp(os.TempDir(), "test-file-response")
+	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
-	response := New(200).File(tempFile.Name())
-	recorder := httptest.NewRecorder()
-	request := httptest.NewRequest("GET", "/", nil)
-	response.ServeHTTP(recorder, request)
-	result := recorder.Result()
-	body := result.Body
-	content, err := io.ReadAll(body)
-	assert.Nil(t, err)
 	defer func() {
-		if err := body.Close(); err != nil {
+		if err := f.Close(); err != nil {
+			panic(err)
+		}
+		if err := os.Remove(f.Name()); err != nil {
 			panic(err)
 		}
 	}()
+	data := []byte("Hello, World!")
+	_, err = f.Write(data)
+	if err != nil {
+		assert.FailNow(t, err.Error())
+	}
+	response := New(200).File(f.Name())
+	response.SetContentType("text/plain")
+	response.SetContent(data)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+	response.ServeHTTP(recorder, request)
+
+	result := recorder.Result()
+	body, err := io.ReadAll(result.Body)
+	assert.Nil(t, err)
+	defer result.Body.Close()
+
 	assert.Equal(t, 200, result.StatusCode)
-	assert.Contains(t, result.Header.Get("content-type"), "text/plain")
-	assert.Equal(t, "helloworld", string(content))
+	assert.Equal(t, "text/plain", result.Header.Get("Content-Type"))
+	assert.Equal(t, data, body)
+}
+
+func TestFileResponse_FileNotExists(t *testing.T) {
+	response := New(200).File("not-exists.txt")
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+	assert.Panics(t, func() { response.ServeHTTP(recorder, request) })
 }

@@ -7,7 +7,11 @@ import (
 	"github.com/gopi-frame/exception"
 )
 
-// RedirectResponse used to send a redirect response
+// RedirectResponse is a struct that facilitates sending an HTTP redirect response.
+// It allows you to set the redirect location using the SetLocation method.
+// When serving the response, it checks if the provided HTTP status code is within the valid range for redirection (between 300 and 308).
+// If the status code is valid, it sends an HTTP redirect response to the specified location using the provided status code.
+// If the status code is invalid for redirection, it panics with an appropriate error message.
 type RedirectResponse struct {
 	*Response
 	location string

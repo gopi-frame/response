@@ -24,6 +24,9 @@ func (streamed *StreamedResponse) ServeHTTP(w http.ResponseWriter, r *http.Reque
 	case <-ctx.Done():
 	default:
 		for {
+			if streamed.step == nil {
+				break
+			}
 			if !streamed.step(w) {
 				break
 			}

@@ -5,18 +5,20 @@ import (
 	"net/http"
 )
 
-// JSONResponse used to response json format data
+// JSONResponse provides a convenient way to send JSON-encoded data
+// as the response body in an HTTP request.
 type JSONResponse struct {
 	*Response
 	data any
 }
 
-// SetContent sets response body content
+// SetContent sets response content
 func (jsonResponse *JSONResponse) SetContent(data any) {
 	jsonResponse.data = data
 }
 
-// ServeHTTP sends the response
+// ServeHTTP implements the http.Handler interface and writes the
+// JSON-encoded response data to the ResponseWriter.
 func (jsonResponse *JSONResponse) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jsonBytes, err := json.Marshal(jsonResponse.data)
 	if err != nil {

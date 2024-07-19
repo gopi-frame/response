@@ -1,37 +1,77 @@
 package response
 
 import (
-	"fmt"
+	"context"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestStreamedResponse(t *testing.T) {
-	var i int
-	response := New(200).Stream(func(w io.Writer) bool {
-		if _, err := w.Write([]byte(fmt.Sprint(i))); err != nil {
-			assert.FailNow(t, err.Error())
-			return false
-		}
-		i++
-		return i < 10
-	})
+func TestStreamedResponseSetStep(t *testing.T) {
+	response := New(200).Stream(nil)
+	stepCalled := false
+	step := func(w io.Writer) bool {
+		stepCalled = true
+		return false
+	}
+	response.SetStep(step)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+	response.ServeHTTP(recorder, request)
+	assert.True(t, stepCalled)
+}
+
+func TestStreamedResponseServeHTTPWithoutStep(t *testing.T) {
+	response := New(200).Stream(nil)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest("GET", "/", nil)
 	response.ServeHTTP(recorder, request)
 	result := recorder.Result()
-	body := result.Body
-	content, err := io.ReadAll(body)
+	assert.Equal(t, 200, result.StatusCode)
+}
+
+func TestStreamedResponseServeHTTPWithCanceledContext(t *testing.T) {
+	response := New(200).Stream(nil)
+	stepCalled := false
+	step := func(w io.Writer) bool {
+		stepCalled = true
+		return true
+	}
+	response.SetStep(step)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	request := httptest.NewRequest("GET", "/", nil)
+	request = request.WithContext(ctx)
+	recorder := httptest.NewRecorder()
+	response.ServeHTTP(recorder, request)
+	assert.False(t, stepCalled)
+}
+
+func TestStreamedResponseServeHTTPWithMultipleSteps(t *testing.T) {
+	response := New(200).Stream(nil)
+	stepCount := 0
+	step := func(w io.Writer) bool {
+		stepCount++
+		_, err := w.Write([]byte("Hello"))
+		if err != nil {
+			return false
+		}
+		if stepCount < 3 {
+			return true
+		}
+		return false
+	}
+	response.SetStep(step)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+	response.ServeHTTP(recorder, request)
+	assert.Equal(t, 3, stepCount)
+	assert.Equal(t, 200, recorder.Result().StatusCode)
+	content, err := io.ReadAll(recorder.Result().Body)
 	if err != nil {
 		assert.FailNow(t, err.Error())
 	}
-	defer func() {
-		if err := body.Close(); err != nil {
-			assert.FailNow(t, err.Error())
-		}
-	}()
-	assert.Equal(t, "0123456789", string(content))
+	defer recorder.Result().Body.Close()
+	assert.Equal(t, "HelloHelloHello", string(content))
 }

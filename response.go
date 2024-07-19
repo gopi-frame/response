@@ -1,14 +1,33 @@
+// Package response provides the basic functionality for representing and managing HTTP responses in the application.
 package response
 
 import (
 	"fmt"
+	"github.com/gopi-frame/exception"
 	"io"
 	"net/http"
 
 	"github.com/gopi-frame/contract"
 )
 
-// Response is the basic response implement
+// Response is the basic struct for representing an HTTP response in the application.
+// It provides a set of methods and properties to manage various aspects of the response, including:
+//   - Status Code: The SetStatusCode method allows you to set the HTTP status code for the response, while the StatusCode method retrieves the current status code.
+//   - Content: The SetContent method sets the response body content, and the Content method retrieves the current content.
+//   - Headers: The SetHeader method allows you to set a specific header value, while SetHeaders sets multiple headers from a map. The HasHeader and Header methods check for the existence of a header and retrieve its value, respectively. The Headers method returns all headers as a [http.Header] instance.
+//   - Cookies: The SetCookie method sets a cookie for the response, and the Cookies method retrieves all cookies associated with the response.
+//   - Sending Response: The ServeHTTP method is responsible for sending the actual response. It sets the cookies, headers, status code, and writes the content to the provided http.ResponseWriter.
+//
+// The Response struct also provides convenience methods to create specialized response types:
+//   - JSON: Returns a JSONResponse instance for sending JSON-encoded data.
+//   - XML: Returns an XMLResponse instance for sending XML-encoded data.
+//   - Reader: Returns a ReaderResponse instance for streaming data from an [io.Reader].
+//   - Redirect: Returns a RedirectResponse instance for sending an HTTP redirect response.
+//   - File: Returns a FileResponse instance for sending a file as the response body.
+//   - Stream: Returns a StreamedResponse instance for sending a streamed response.
+//
+// The [Response] struct serves as the foundation for building and customizing HTTP responses in the application,
+// providing a flexible and extensible approach to handle various response types and requirements.
 type Response struct {
 	headers    http.Header
 	cookies    []*http.Cookie
@@ -32,7 +51,11 @@ func New(statusCode int, content ...any) *Response {
 // SetStatusCode sets the response http status code
 func (response *Response) SetStatusCode(statusCode int) {
 	if statusCode < 100 || statusCode > 600 {
-		panic(fmt.Errorf("HTTP status code `%d` is invalid", statusCode))
+		panic(exception.NewArgumentException(
+			"statusCode",
+			statusCode,
+			fmt.Sprintf("Invalid status code: %d", statusCode),
+		))
 	}
 	response.statusCode = statusCode
 }

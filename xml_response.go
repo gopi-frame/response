@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// XMLResponse used to send XML-encoded data
+// XMLResponse is used to send a XML response
 type XMLResponse struct {
 	*Response
 	data any

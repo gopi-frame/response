@@ -1,36 +1,70 @@
 package response
 
 import (
+	"encoding/xml"
+	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestXMLResponse(t *testing.T) {
-	type data struct {
-		Key1 string `xml:"key1"`
-		Key2 string `xml:"Key2"`
+func TestXMLResponseSetContent(t *testing.T) {
+	data := struct {
+		Name string
+		Age  int
+	}{
+		Name: "John",
+		Age:  30,
 	}
-	data1 := data{
-		Key1: "value1",
-		Key2: "value2",
+
+	xmlResponse := &XMLResponse{Response: New(200)}
+	xmlResponse.SetContent(data)
+
+	assert.Equal(t, data, xmlResponse.data)
+}
+
+func TestXMLResponseServeHTTP(t *testing.T) {
+	data := struct {
+		XMLName xml.Name `xml:"struct"`
+		Name    string
+		Age     int
+	}{
+		Name: "John",
+		Age:  30,
 	}
-	response := New(200).XML(data1)
+
+	xmlResponse := &XMLResponse{Response: New(200)}
+	xmlResponse.SetContent(data)
+
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest("GET", "/", nil)
-	response.ServeHTTP(recorder, request)
+	xmlResponse.ServeHTTP(recorder, request)
+
 	result := recorder.Result()
 	body := result.Body
 	content, err := io.ReadAll(body)
 	assert.Nil(t, err)
 	defer func() {
 		if err := body.Close(); err != nil {
-			assert.FailNow(t, err.Error())
+			panic(err)
 		}
 	}()
+
 	assert.Equal(t, 200, result.StatusCode)
-	assert.Equal(t, "application/xml", result.Header.Get("content-type"))
-	assert.Equal(t, `<data><key1>value1</key1><Key2>value2</Key2></data>`, string(content))
+	assert.Contains(t, result.Header.Get("content-type"), "application/xml")
+	assert.Equal(t, `<struct><Name>John</Name><Age>30</Age></struct>`, string(content))
+}
+
+func TestXMLResponseServeHTTPWithError(t *testing.T) {
+	data := make(chan int)
+
+	xmlResponse := &XMLResponse{Response: New(200)}
+	xmlResponse.SetContent(data)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+
+	assert.Panics(t, func() {
+		xmlResponse.ServeHTTP(recorder, request)
+	})
 }

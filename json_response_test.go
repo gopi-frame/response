@@ -1,31 +1,66 @@
 package response
 
 import (
+	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
-func TestJSONResponse(t *testing.T) {
-	response := New(200).JSON(map[string]any{
-		"key1": "value1",
-		"key2": "value2",
-	})
+func TestJSONResponseSetContent(t *testing.T) {
+	data := struct {
+		Message string
+		Value   int
+	}{
+		Message: "Hello, World!",
+		Value:   42,
+	}
+
+	response := New(200).JSON()
+	response.SetContent(data)
+
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest("GET", "/", nil)
 	response.ServeHTTP(recorder, request)
+
 	result := recorder.Result()
-	body := result.Body
-	content, err := io.ReadAll(body)
+	body, err := io.ReadAll(result.Body)
 	assert.Nil(t, err)
-	defer func() {
-		if err := body.Close(); err != nil {
-			assert.FailNow(t, err.Error())
-		}
-	}()
+	defer result.Body.Close()
+
 	assert.Equal(t, 200, result.StatusCode)
-	assert.Equal(t, "application/json", result.Header.Get("content-type"))
-	assert.JSONEq(t, `{"key1":"value1","key2":"value2"}`, string(content))
+	assert.Equal(t, "application/json", result.Header.Get("Content-Type"))
+	assert.JSONEq(t, `{"Message":"Hello, World!","Value":42}`, string(body))
+}
+
+func TestJSONResponseMarshalError(t *testing.T) {
+	data := make(chan int)
+
+	response := New(200).JSON()
+	response.SetContent(data)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+
+	assert.Panics(t, func() {
+		response.ServeHTTP(recorder, request)
+	})
+}
+
+func TestJSONResponseNilData(t *testing.T) {
+	response := New(200).JSON()
+	response.SetContent(nil)
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest("GET", "/", nil)
+	response.ServeHTTP(recorder, request)
+
+	result := recorder.Result()
+	body, err := io.ReadAll(result.Body)
+	assert.Nil(t, err)
+	defer result.Body.Close()
+
+	assert.Equal(t, 200, result.StatusCode)
+	assert.Equal(t, "application/json", result.Header.Get("Content-Type"))
+	assert.Equal(t, "null", string(body))
 }
