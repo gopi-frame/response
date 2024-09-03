@@ -52,7 +52,7 @@ func TestXMLResponseServeHTTP(t *testing.T) {
 
 	assert.Equal(t, 200, result.StatusCode)
 	assert.Contains(t, result.Header.Get("content-type"), "application/xml")
-	assert.Equal(t, `<struct><Name>John</Name><Age>30</Age></struct>`, string(content))
+	assert.Equal(t, `<struct><name>John</name><Age>30</Age></struct>`, string(content))
 }
 
 func TestXMLResponseServeHTTPWithError(t *testing.T) {
