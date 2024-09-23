@@ -1,6 +1,5 @@
 # Overview
 [![Go Reference](https://pkg.go.dev/badge/github.com/gopi-frame/response.svg)](https://pkg.go.dev/github.com/gopi-frame/response)
-[]
 
 This is a package for handling HTTP responses.
 
