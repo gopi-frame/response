@@ -3,9 +3,10 @@ package response
 
 import (
 	"fmt"
-	"github.com/gopi-frame/exception"
 	"io"
 	"net/http"
+
+	"github.com/gopi-frame/exception"
 
 	"github.com/gopi-frame/contract"
 )
@@ -118,7 +119,7 @@ func (response *Response) Cookies() []*http.Cookie {
 }
 
 // ServeHTTP sends the response
-func (response *Response) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (response *Response) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	// set cookies
 	for _, cookie := range response.cookies {
 		http.SetCookie(w, cookie)
@@ -214,4 +215,15 @@ func (response *Response) Stream(step func(io.Writer) bool) *StreamedResponse {
 	}
 	s.SetStep(step)
 	return s
+}
+
+func (response *Response) Html(file string, model map[string]any) *HtmlResponse {
+	h := &HtmlResponse{
+		Response: response,
+	}
+	if err := h.LoadHtml(file); err != nil {
+		panic(err)
+	}
+	h.SetModel(model)
+	return h
 }
